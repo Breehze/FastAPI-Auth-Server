@@ -8,8 +8,15 @@
         <link rel="stylesheet" href="">
     </head>
     <body>
-        
-        <h1>Hello</h1>
-        <script src="{{ url_for('static', path='/something.js') }}" ></script>
+        <form action="{{ url }}" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            
+            <button type="submit">Login</button>
+        </form>
+        <!--<script src="{{ url_for('static', path='/something.js') }}" ></script>-->
     </body>
 </html>
