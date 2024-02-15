@@ -4,10 +4,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from urllib.parse import urlencode 
 from cryptostuff import CodeManager, JWTmanager , KeyManager
+from endpoint_dependencies import get_api_key
 import  asyncio
 from pydantic import BaseModel 
 
 TOKEN_ISSUER = "https://breehze-auth.com"
+
 
 codes = {}
 
@@ -41,13 +43,17 @@ async def startup_events():
     k_m = asyncio.create_task(key_manager.key_rotate())
     asyncio.gather(c_m)
 
-@app.get("v0/auth")
+@app.get("/v0/auth")
 async def authentification_page(request : fastapi.Request,response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
     q_str = urlencode(dict(request.query_params))
     login_p_endp = "/login?"+q_str
     return templates.TemplateResponse("login.html",{"request": request,"url" : login_p_endp})
 
-@app.post("v0/token")
+@app.get("/v0/client_pub_key")
+async def retrieve_public_key(api_key : str = fastapi.Security(get_api_key)):
+    return key_manager.pub_base64
+
+@app.post("/v0/token")
 async def exchange_token(auth_grant_body : AuthGrantBody):
     if auth_grant_body.grant_type != "authorization_code":
         raise fastapi.HTTPException(status_code=400, detail= "Authorization flow not supported")
@@ -66,7 +72,7 @@ async def exchange_token(auth_grant_body : AuthGrantBody):
     return {"access_token" : token, "token_type" : "bearer"}
 
 
-@app.post("v0/login")
+@app.post("/v0/login")
 async def login(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
     if form_data.username not in test_users or form_data.password != test_users[form_data.username]["password"] :
         raise fastapi.HTTPException(status_code=401, detail= "Incorect password or username")

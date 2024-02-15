@@ -4,12 +4,15 @@ import asyncio
 import copy 
 import os
 import jwt
+import base64
 from dotenv import load_dotenv
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
 class KeyManager:
+    def __init__(self):
+        self.pub_base64 = ''
     async def key_rotate(self):
         while True:
             private_key = rsa.generate_private_key(public_exponent=65537,key_size=2048,backend=default_backend())
@@ -18,8 +21,15 @@ class KeyManager:
                 f.write(private_key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.PKCS8,encryption_algorithm=serialization.NoEncryption()))
             with open("public_key.pem", "wb") as f:
                 f.write(public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo))
-            await asyncio.sleep(3600)
-
+            self.pub_base64 = self.get_base64("private_key.pem")
+            await asyncio.sleep(120)
+    
+    def get_base64(self,path):
+        with open(path,"rb") as rd:
+            pem_data = rd.read()
+            base64_enc = base64.b64encode(pem_data).decode("utf-8")
+            data = '\n'.join([base64_enc[i:i+64] for i in range(0, len(base64_enc), 64)])
+        return data
 class JWTmanager:
     def jwt_get(self,issuer : str ,sub : any , aud : str ,payload_append : dict = None):
         with open("private_key.pem", 'r') as key_file:
