@@ -5,17 +5,27 @@ import copy
 import os
 import jwt
 from dotenv import load_dotenv
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
+class KeyManager:
+    async def key_rotate(self):
+        while True:
+            private_key = rsa.generate_private_key(public_exponent=65537,key_size=2048,backend=default_backend())
+            public_key = private_key.public_key()
+            with open("private_key.pem", "wb") as f:
+                f.write(private_key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.PKCS8,encryption_algorithm=serialization.NoEncryption()))
+            with open("public_key.pem", "wb") as f:
+                f.write(public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo))
+            await asyncio.sleep(3600)
 
 class JWTmanager:
-    def __init__(self):
+    def jwt_get(self,issuer : str ,sub : any , aud : str ,payload_append : dict = None):
         with open("private_key.pem", 'r') as key_file:
-            self.private_key = key_file.read()
-        with open("public_key.pem", 'r') as key_file:
-            self.public_key = key_file.read()
-    def jwt_get(self,sub : any , aud : str ,payload_append : dict = None):
+            private_key = key_file.read()
         issued_time = time.time()
-        payload = {"iss" : "",
+        payload = {"iss" : issuer,
                    "sub" : sub,
                    "aud" : aud,
                    "exp" : issued_time + 3600,
@@ -23,9 +33,11 @@ class JWTmanager:
         if payload_append != None:
             payload.update(payload_append)
         print(payload["aud"])
-        return jwt.encode(payload,self.private_key,algorithm = "RS256")
+        return jwt.encode(payload,private_key,algorithm = "RS256")
     def jwt_decode(self,token,aud = None):
-        return jwt.decode(token,self.public_key,algorithms = ["RS256"],audience = aud)
+        with open("public_key.pem", 'r') as key_file:
+            public_key = key_file.read()
+        return jwt.decode(token,public_key,algorithms = ["RS256"],audience = aud)
 
 class CodeManager:
     def __init__(self,managee: dict):
@@ -52,5 +64,5 @@ class CodeManager:
             for token,metadata in copy.copy(self.managee).items():
                 if time.time() - metadata["issue_time"] >= 120 :
                     self.managee.pop(token)
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
 
