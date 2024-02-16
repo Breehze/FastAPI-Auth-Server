@@ -21,6 +21,8 @@ jwt_manager = JWTmanager()
 
 key_manager = KeyManager()
 
+pw_manager = PasswordManager()
+
 app.mount("/static",StaticFiles(directory = "static"), name = "static")
 
 templates = Jinja2Templates(directory="templates")
@@ -36,6 +38,11 @@ class AuthGrantBody(BaseModel):
     redirect_uri : str
     client_id : str 
     client_secret : str | None = None
+
+class RegisterBody(BaseModel):
+    user_mail : str
+    user_password : str
+    user_password_repeat : str
 
 @app.on_event("startup")
 async def startup_events():
@@ -71,10 +78,18 @@ async def exchange_token(auth_grant_body : AuthGrantBody):
     
     return {"access_token" : token, "token_type" : "bearer"}
 
+@app.post("/v0/register")
+async def register_user(register : RegisterBody = fastapi.Depends()): 
+    if register.user_mail in test_users:
+        raise fastapi.HTTPException(status_code=409, detail="This user already exists")
+    if register.user_password != register.user_password_repeat:
+        raise fastapi.HTTPException(status_code=400, detail="Passwords do not match")
+    test_users.update({register.user_mail : {"password" : pw_manager.hash_pw(register.user_password) }})
+    return {"Created_user" : register.user_mail}
 
 @app.post("/v0/login")
-async def login(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
-    if form_data.username not in test_users or PasswordManager().check_pw(form_data.password,test_users[form_data.username]["password"]) != True:
+async def login_user(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
+    if form_data.username not in test_users or pw_manager.check_pw(form_data.password,test_users[form_data.username]["password"]) != True:
         raise fastapi.HTTPException(status_code=401, detail= "Incorect password or username")
     if client_id not in test_clients or client_id is None:
         raise fastapi.HTTPException(status_code=400, detail= "Client does not exist")
