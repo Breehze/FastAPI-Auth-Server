@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from urllib.parse import urlencode 
 from cryptostuff import CodeManager, JWTmanager , KeyManager , PasswordManager
 from endpoint_dependencies import get_api_key
+from contextlib import asynccontextmanager
 import  asyncio
 from pydantic import BaseModel 
 
@@ -13,8 +14,6 @@ TOKEN_ISSUER = "https://breehze-auth.com"
 
 codes = {}
 
-app = fastapi.FastAPI()
-
 code_manager = CodeManager(codes)
 
 jwt_manager = JWTmanager()
@@ -22,6 +21,15 @@ jwt_manager = JWTmanager()
 key_manager = KeyManager()
 
 pw_manager = PasswordManager()
+
+@asynccontextmanager
+async def lifespan(app : fastapi.FastAPI):
+    c_m = asyncio.create_task(code_manager.manage())
+    k_m = asyncio.create_task(key_manager.key_rotate())
+    asyncio.gather(c_m)
+    yield
+
+app = fastapi.FastAPI(lifespan=lifespan)
 
 app.mount("/static",StaticFiles(directory = "static"), name = "static")
 
@@ -43,12 +51,6 @@ class RegisterBody(BaseModel):
     user_mail : str
     user_password : str
     user_password_repeat : str
-
-@app.on_event("startup")
-async def startup_events():
-    c_m = asyncio.create_task(code_manager.manage())
-    k_m = asyncio.create_task(key_manager.key_rotate())
-    asyncio.gather(c_m)
 
 @app.get("/v0/auth")
 async def authentification_page(request : fastapi.Request,response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
