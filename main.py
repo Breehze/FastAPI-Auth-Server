@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from urllib.parse import urlencode 
-from cryptostuff import CodeManager, JWTmanager , KeyManager
+from cryptostuff import CodeManager, JWTmanager , KeyManager , PasswordManager
 from endpoint_dependencies import get_api_key
 import  asyncio
 from pydantic import BaseModel 
@@ -28,7 +28,7 @@ templates = Jinja2Templates(directory="templates")
 
 test_clients = {"someclient" : "https://example.com/callback"}
 
-test_users = {"boris" : {"password" : "hello"},"fiitsucksdick" : {"password" : "jolanda"}}
+test_users = {"boris" : {"password" : b'$2b$12$vjPmHb3HEuMjmWsr4PuJAO5C2.gVhcJ3hDbpVnkegVC3P9KuYy862'},"fiitsucksdick" : {"password" : "jolanda"}}
 
 class AuthGrantBody(BaseModel):
     grant_type : str
@@ -46,7 +46,7 @@ async def startup_events():
 @app.get("/v0/auth")
 async def authentification_page(request : fastapi.Request,response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
     q_str = urlencode(dict(request.query_params))
-    login_p_endp = "/login?"+q_str
+    login_p_endp = "/v0/login?"+q_str
     return templates.TemplateResponse("login.html",{"request": request,"url" : login_p_endp})
 
 @app.get("/v0/client_pub_key")
@@ -74,7 +74,7 @@ async def exchange_token(auth_grant_body : AuthGrantBody):
 
 @app.post("/v0/login")
 async def login(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
-    if form_data.username not in test_users or form_data.password != test_users[form_data.username]["password"] :
+    if form_data.username not in test_users or PasswordManager().check_pw(form_data.password,test_users[form_data.username]["password"]) != True:
         raise fastapi.HTTPException(status_code=401, detail= "Incorect password or username")
     if client_id not in test_clients or client_id is None:
         raise fastapi.HTTPException(status_code=400, detail= "Client does not exist")

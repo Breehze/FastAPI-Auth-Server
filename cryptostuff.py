@@ -5,6 +5,7 @@ import copy
 import os
 import jwt
 import base64
+import bcrypt
 from dotenv import load_dotenv
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -64,7 +65,7 @@ class CodeManager:
             return False
         return True
     
-    def validate_url(self,code,new_url):
+    def validate_url(self,code : str,new_url : str):
         if self.managee[code]["associated_url"] != new_url:
             return False
         return True
@@ -76,3 +77,10 @@ class CodeManager:
                     self.managee.pop(token)
             await asyncio.sleep(5)
 
+class PasswordManager:
+    def hash_pw(self,password ):
+        return bcrypt.hashpw(password.encode("utf-8"),bcrypt.gensalt())
+    def check_pw(self,pw_to_check,pw_saved):
+        if bcrypt.checkpw(pw_to_check.encode("utf-8"),pw_saved):
+            return True
+        return False
