@@ -79,7 +79,7 @@ async def exchange_token(auth_grant_body : AuthGrantBody):
     return {"access_token" : token, "token_type" : "bearer"}
 
 @app.post("/v0/register")
-async def register_user(register : RegisterBody = fastapi.Depends()): 
+async def register_user(register : RegisterBody): 
     if register.user_mail in test_users:
         raise fastapi.HTTPException(status_code=409, detail="This user already exists")
     if register.user_password != register.user_password_repeat:
