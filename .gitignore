@@ -2,3 +2,6 @@ __pycache__
 Scripts
 Lib
 pyvenv.cfg
+.env
+private_key.pem
+public_key.pem
