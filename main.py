@@ -7,7 +7,7 @@ from cryptostuff import CodeManager, JWTmanager , KeyManager , PasswordManager
 from endpoint_dependencies import get_api_key
 from contextlib import asynccontextmanager
 import  asyncio
-from pydantic import BaseModel 
+from pydantic import BaseModel, EmailStr
 
 TOKEN_ISSUER = "https://breehze-auth.com"
 
@@ -48,7 +48,7 @@ class AuthGrantBody(BaseModel):
     client_secret : str | None = None
 
 class RegisterBody(BaseModel):
-    user_mail : str
+    user_mail : EmailStr
     user_password : str
     user_password_repeat : str
 
