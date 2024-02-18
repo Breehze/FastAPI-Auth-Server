@@ -7,10 +7,17 @@ from cryptostuff import CodeManager, JWTmanager , KeyManager , PasswordManager
 from endpoint_dependencies import get_api_key
 from contextlib import asynccontextmanager
 import  asyncio
-from pydantic import BaseModel, EmailStr
+from models import RegisterBody, AuthGrantBody
+
+from bson import ObjectId
+import motor.motor_asyncio
+from pymongo import ReturnDocument
 
 TOKEN_ISSUER = "https://breehze-auth.com"
 
+client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+database = client["AuthUsers"]
+collection = database['Users']
 
 codes = {}
 
@@ -39,18 +46,6 @@ templates = Jinja2Templates(directory="templates")
 test_clients = {"someclient" : "https://example.com/callback"}
 
 test_users = {"boris" : {"password" : b'$2b$12$vjPmHb3HEuMjmWsr4PuJAO5C2.gVhcJ3hDbpVnkegVC3P9KuYy862'},"fiitsucksdick" : {"password" : "jolanda"}}
-
-class AuthGrantBody(BaseModel):
-    grant_type : str
-    code : str
-    redirect_uri : str
-    client_id : str 
-    client_secret : str | None = None
-
-class RegisterBody(BaseModel):
-    user_mail : EmailStr
-    user_password : str
-    user_password_repeat : str
 
 @app.get("/v0/auth")
 async def authentification_page(request : fastapi.Request,response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
@@ -86,12 +81,16 @@ async def register_user(register : RegisterBody):
         raise fastapi.HTTPException(status_code=409, detail="This user already exists")
     if register.user_password != register.user_password_repeat:
         raise fastapi.HTTPException(status_code=400, detail="Passwords do not match")
-    test_users.update({register.user_mail : {"password" : pw_manager.hash_pw(register.user_password) }})
+    
+    result = await collection.insert_one({"_id" : register.user_mail, "password" : pw_manager.hash_pw(register.user_password) })
+    
     return {"Created_user" : register.user_mail}
 
 @app.post("/v0/login")
 async def login_user(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
-    if form_data.username not in test_users or pw_manager.check_pw(form_data.password,test_users[form_data.username]["password"]) != True:
+    user = await collection.find_one({"_id": form_data.username })
+    
+    if not user or pw_manager.check_pw(form_data.password,user["password"]) != True:
         raise fastapi.HTTPException(status_code=401, detail= "Incorect password or username")
     if client_id not in test_clients or client_id is None:
         raise fastapi.HTTPException(status_code=400, detail= "Client does not exist")
