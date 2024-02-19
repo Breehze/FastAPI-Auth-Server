@@ -7,10 +7,14 @@ from cryptostuff import CodeManager, JWTmanager , KeyManager , PasswordManager
 from endpoint_dependencies import get_api_key
 from contextlib import asynccontextmanager
 import  asyncio
-from pydantic import BaseModel, EmailStr
+from models import RegisterBody, AuthGrantBody
+
+from bson import ObjectId
+import motor.motor_asyncio
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 TOKEN_ISSUER = "https://breehze-auth.com"
-
 
 codes = {}
 
@@ -21,6 +25,16 @@ jwt_manager = JWTmanager()
 key_manager = KeyManager()
 
 pw_manager = PasswordManager()
+
+
+def get_db():
+    client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+    db = client["AuthUsers"]
+    collection = db['Users']
+    try:
+        yield collection
+    finally:
+        client.close()
 
 @asynccontextmanager
 async def lifespan(app : fastapi.FastAPI):
@@ -37,20 +51,6 @@ templates = Jinja2Templates(directory="templates")
 
 
 test_clients = {"someclient" : "https://example.com/callback"}
-
-test_users = {"boris" : {"password" : b'$2b$12$vjPmHb3HEuMjmWsr4PuJAO5C2.gVhcJ3hDbpVnkegVC3P9KuYy862'},"fiitsucksdick" : {"password" : "jolanda"}}
-
-class AuthGrantBody(BaseModel):
-    grant_type : str
-    code : str
-    redirect_uri : str
-    client_id : str 
-    client_secret : str | None = None
-
-class RegisterBody(BaseModel):
-    user_mail : EmailStr
-    user_password : str
-    user_password_repeat : str
 
 @app.get("/v0/auth")
 async def authentification_page(request : fastapi.Request,response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
@@ -81,17 +81,21 @@ async def exchange_token(auth_grant_body : AuthGrantBody):
     return {"access_token" : token, "token_type" : "bearer"}
 
 @app.post("/v0/register")
-async def register_user(register : RegisterBody): 
-    if register.user_mail in test_users:
-        raise fastapi.HTTPException(status_code=409, detail="This user already exists")
+async def register_user(register : RegisterBody, db = fastapi.Depends(get_db)): 
     if register.user_password != register.user_password_repeat:
         raise fastapi.HTTPException(status_code=400, detail="Passwords do not match")
-    test_users.update({register.user_mail : {"password" : pw_manager.hash_pw(register.user_password) }})
+    try:
+        await db.insert_one({"_id" : register.user_mail, "password" : pw_manager.hash_pw(register.user_password) })
+    except DuplicateKeyError:
+        raise fastapi.HTTPException(status_code=409, detail="This user already exists")
+
     return {"Created_user" : register.user_mail}
 
 @app.post("/v0/login")
-async def login_user(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
-    if form_data.username not in test_users or pw_manager.check_pw(form_data.password,test_users[form_data.username]["password"]) != True:
+async def login_user(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None, db = fastapi.Depends(get_db)):
+    user = await db.find_one({"_id": form_data.username })
+    
+    if not user or pw_manager.check_pw(form_data.password,user["password"]) != True:
         raise fastapi.HTTPException(status_code=401, detail= "Incorect password or username")
     if client_id not in test_clients or client_id is None:
         raise fastapi.HTTPException(status_code=400, detail= "Client does not exist")
