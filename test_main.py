@@ -29,9 +29,9 @@ def setup_teardown():
     client = MongoClient("mongodb://localhost:27017")
     db = client["AuthUsers"]
     collection = db['testUsers']
-    collection.delete_many({})
     codes.clear()
     yield
+    collection.delete_many({})
 
 
 def test_register_password_missmatch():

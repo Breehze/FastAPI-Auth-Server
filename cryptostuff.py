@@ -70,10 +70,10 @@ class CodeManager:
             return False
         return True
     
-    async def manage(self):
+    async def manage(self,expiration_time = 120):
         while True: 
             for token,metadata in copy.copy(self.managee).items():
-                if time.time() - metadata["issue_time"] >= 120 :
+                if time.time() - metadata["issue_time"] >= expiration_time :
                     self.managee.pop(token)
             await asyncio.sleep(5)
 

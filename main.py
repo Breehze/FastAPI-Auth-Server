@@ -7,18 +7,23 @@ from cryptostuff import CodeManager, JWTmanager , KeyManager , PasswordManager
 from endpoint_dependencies import get_api_key
 from contextlib import asynccontextmanager
 import  asyncio
-from models import RegisterBody, AuthGrantBody
+from models import RegisterBody, AuthGrantBody , ResetPasswordBody , ReqResetPasswordBody
 
 from bson import ObjectId
 import motor.motor_asyncio
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
+from mailstuff import send_pw_reset
+
 TOKEN_ISSUER = "https://breehze-auth.com"
 
 codes = {}
+pw_resets = {}
 
 code_manager = CodeManager(codes)
+
+pw_reset_manager = CodeManager(pw_resets)
 
 jwt_manager = JWTmanager()
 
@@ -40,6 +45,7 @@ def get_db():
 async def lifespan(app : fastapi.FastAPI):
     c_m = asyncio.create_task(code_manager.manage())
     k_m = asyncio.create_task(key_manager.key_rotate())
+    pr_m = asyncio.create_task(pw_reset_manager.manage(expiration_time = 300 ))
     asyncio.gather(c_m)
     yield
 
@@ -47,8 +53,8 @@ app = fastapi.FastAPI(lifespan=lifespan)
 
 app.mount("/static",StaticFiles(directory = "static"), name = "static")
 
-templates = Jinja2Templates(directory="templates")
 
+templates = Jinja2Templates(directory="templates")
 
 test_clients = {"someclient" : "https://example.com/callback"}
 
@@ -90,6 +96,27 @@ async def register_user(register : RegisterBody, db = fastapi.Depends(get_db)):
         raise fastapi.HTTPException(status_code=409, detail="This user already exists")
 
     return {"Created_user" : register.user_mail}
+
+@app.post("/v0/req_pw_reset")
+async def request_reset_password(request : fastapi.Request,reset: ReqResetPasswordBody,db = fastapi.Depends(get_db)):
+    user = await db.find_one({"_id": reset.user_mail })
+    if not user:
+        raise fastapi.HTTPException(status_code=400, detail="User does not exist")
+    reset_token = pw_reset_manager.url_code()
+    pw_resets.update({reset_token : {"issue_time" : pw_reset_manager.issuance_time(),"associated_user" : reset.user_mail}})
+    send_pw_reset(reset.user_mail,templates.TemplateResponse("pw_reset_template.html",{"request": request,"reset_url" : reset_token }).body)
+    return "Mail sent"
+
+@app.patch("/v0/pw_reset/{token}")
+async def password_reset(body: ResetPasswordBody, token : str = None, db = fastapi.Depends(get_db) ):
+    if token not in pw_resets or token is None:
+        raise fastapi.HTTPException(status_code=400,detail="Invalid token")
+    if body.new_password != body.new_password_repeat:
+        raise fastapi.HTTPException(status_code=400, detail= "New passwords do not match")
+    result = await db.update_one({"_id": pw_resets[token]['associated_user']}, {"$set": {"password" : pw_manager.hash_pw(body.new_password)}})
+    print(result)
+    return "Password reset"
+    
 
 @app.post("/v0/login")
 async def login_user(form_data : OAuth2PasswordRequestForm = fastapi.Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None, db = fastapi.Depends(get_db)):

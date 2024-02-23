@@ -11,3 +11,11 @@ class RegisterBody(BaseModel):
     user_mail : EmailStr
     user_password : str
     user_password_repeat : str
+
+class ReqResetPasswordBody(BaseModel):
+    user_mail : EmailStr
+
+class ResetPasswordBody(BaseModel):
+    new_password: str
+    new_password_repeat : str
+
