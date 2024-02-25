@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+</head>
+<body>
+    <form id="passwordForm">
+        <label for="new_password">New Password:</label>
+        <input type="password" id="new_password" name="new_password" required>
+        <br>
+        <label for="confirm_password">Confirm Password:</label>
+        <input type="password" id="confirm_password" name="new_password_repeat" required>
+        <br>
+        <input type="submit" value="Reset Password">
+    </form> 
+    <script>
+        const endpoint = "{{ reset_url }}";
+        const passwordForm = document.getElementById("passwordForm");
+        passwordForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const pw_in = document.getElementById("new_password").value;
+            const pw_in_repeat = document.getElementById("confirm_password").value;
+
+            const data = {
+                new_password: pw_in,
+                new_password_repeat: pw_in_repeat
+            };
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to reset password");
+                }
+
+                // Optionally, handle successful response here
+            } catch (error) {
+                console.error("Error:", error.message);
+                            }
+        });
+    </script>
+</body>
+</html>

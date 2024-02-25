@@ -104,8 +104,15 @@ async def request_reset_password(request : fastapi.Request,reset: ReqResetPasswo
         raise fastapi.HTTPException(status_code=400, detail="User does not exist")
     reset_token = pw_reset_manager.url_code()
     pw_resets.update({reset_token : {"issue_time" : pw_reset_manager.issuance_time(),"associated_user" : reset.user_mail}})
-    send_pw_reset(reset.user_mail,templates.TemplateResponse("pw_reset_template.html",{"request": request,"reset_url" : reset_token }).body)
+    send_pw_reset(reset.user_mail,templates.TemplateResponse("pw_reset_template.html",{"request": request,"reset_url" : f"http://127.0.0.1:8000/v0/pw_reset?token={reset_token}" }).body)
     return "Mail sent"
+
+@app.get("/v0/pw_reset")
+async def password_reset_page( request : fastapi.Request, token : str = None):
+    if token is not None and token not in pw_resets:
+        pass
+    reset_url = f"http://127.0.0.1:8000/v0/pw_reset/{token}"
+    return templates.TemplateResponse("pw_reset_page.html",{"request" : request, "reset_url" : reset_url})
 
 @app.patch("/v0/pw_reset/{token}")
 async def password_reset(body: ResetPasswordBody, token : str = None, db = fastapi.Depends(get_db) ):
@@ -114,7 +121,7 @@ async def password_reset(body: ResetPasswordBody, token : str = None, db = fasta
     if body.new_password != body.new_password_repeat:
         raise fastapi.HTTPException(status_code=400, detail= "New passwords do not match")
     result = await db.update_one({"_id": pw_resets[token]['associated_user']}, {"$set": {"password" : pw_manager.hash_pw(body.new_password)}})
-    print(result)
+    pw_resets.pop(token)
     return "Password reset"
     
 
