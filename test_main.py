@@ -1,14 +1,14 @@
 from fastapi.testclient import TestClient
 import pytest
-from main import app, codes , TOKEN_ISSUER , test_clients , get_db
-from cryptostuff import JWTmanager
+from main import app, TOKEN_ISSUER , test_clients 
+from utils.cryptostuff import JWTmanager
+from state_handler import code_manager
+from utils.endpoint_dependencies import get_db
 
 import motor.motor_asyncio
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pymongo import MongoClient
-
-
 
 def override_get_db():
     client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017") 
@@ -29,7 +29,7 @@ def setup_teardown():
     client = MongoClient("mongodb://localhost:27017")
     db = client["AuthUsers"]
     collection = db['testUsers']
-    codes.clear()
+    code_manager.managee.clear()
     yield
     collection.delete_many({})
 
@@ -72,7 +72,7 @@ def test_login_sucssesful_login():
     client.post('/v0/register', json= {"user_mail" : "something@something.com" , "user_password" : "hello", "user_password_repeat" : "hello"})
     response = client.post('/v0/login?redirect_uri=https://example.com/callback&client_id=someclient', data=req_body, follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers['Location'] == 'https://example.com/callback?code='+ list(codes.keys())[0]
+    assert response.headers['Location'] == 'https://example.com/callback?code='+ list(code_manager.managee.keys())[0]
 
 
 def test_login_wrong_passwords():
@@ -115,13 +115,13 @@ def test_token_valid_token():
     client.post('/v0/login?redirect_uri=https://example.com/callback&client_id=someclient', data= {"username" : "something@something.com","password" : "hello"}, follow_redirects=False)
     req_body = {
         "grant_type" : "authorization_code",
-        "code" : list(codes.keys())[0] ,  
+        "code" : list(code_manager.managee.keys())[0] ,  
         "redirect_uri" : "https://example.com/callback",
         "client_id" : "someclient"
     }
     response = client.post('/v0/token', json= req_body)
     assert response.status_code == 200
-    assert len(codes) == 0
+    assert len(code_manager.managee) == 0
 
 def test_token_invalid_flow():
     req_body = {
@@ -142,7 +142,7 @@ def test_token_invalid_code():
     }
     response = client.post('/v0/token', json= req_body)
     assert response.status_code == 400
-    assert req_body["code"] not in codes
+    assert req_body["code"] not in code_manager.managee
 
 def test_token_invalid_redirect():
     req_body = {
