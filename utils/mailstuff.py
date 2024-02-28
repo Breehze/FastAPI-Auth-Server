@@ -1,11 +1,16 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from os import getenv
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 """Tested with via google smtp server"""
-smtp_s,port = ("smtp.something.com", 465)
-sender_mail = "example@something.com"
-pw = "smtp_auth_pw"
+smtp_s,port = (getenv("SMTP_SERV"), 465)
+sender_mail = getenv("SMTP_LOGIN")
+pw = getenv("SMTP_PW") 
 
 
 def send_pw_reset(recipient,html_template):

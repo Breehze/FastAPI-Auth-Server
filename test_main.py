@@ -1,9 +1,10 @@
 from fastapi.testclient import TestClient
 import pytest
-from main import app, TOKEN_ISSUER , test_clients 
+from main import app, TOKEN_ISSUER 
 from utils.cryptostuff import JWTmanager
 from state_handler import code_manager
 from utils.endpoint_dependencies import get_db
+from routers.auth_flow import test_clients
 
 import motor.motor_asyncio
 from pymongo import ReturnDocument

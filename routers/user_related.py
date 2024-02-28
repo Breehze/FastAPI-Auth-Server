@@ -9,6 +9,8 @@ from  fastapi.templating import Jinja2Templates
 from pymongo.errors import DuplicateKeyError
 from utils.mailstuff import send_pw_reset
 from state_handler import pw_reset_manager
+from dotenv import load_dotenv
+from os import getenv
 
 import asyncio
 
@@ -38,7 +40,7 @@ async def request_reset_password(request : fastapi.Request,reset: ReqResetPasswo
         raise fastapi.HTTPException(status_code=400, detail="User does not exist")
     reset_token = pw_reset_manager.url_code()
     pw_reset_manager.managee.update({reset_token : {"issue_time" : pw_reset_manager.issuance_time(),"associated_user" : reset.user_mail}})
-    send_pw_reset(reset.user_mail,templates.TemplateResponse("pw_reset_template.html",{"request": request,"reset_url" : f"http://127.0.0.1:8000/v0/pw_reset?token={reset_token}" }).body)
+    send_pw_reset(reset.user_mail,templates.TemplateResponse("pw_reset_template.html",{"request": request,"reset_url" : f"{getenv('DOMAIN')}/v0/pw_reset?token={reset_token}" }).body)
     return "Mail sent"
 
 @router.get("/v0/pw_reset")

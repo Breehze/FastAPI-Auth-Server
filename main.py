@@ -6,8 +6,10 @@ from contextlib import asynccontextmanager
 import asyncio
 from routers.client_stuff import router
 from state_handler import key_manager, code_manager,pw_reset_manager
+from dotenv import load_dotenv
+from os import getenv
 
-TOKEN_ISSUER = "https://breehze-auth.com"
+TOKEN_ISSUER = getenv("DOMAIN") 
 
 @asynccontextmanager
 async def lifespan(app : FastAPI):
@@ -23,7 +25,6 @@ app = FastAPI(lifespan = lifespan)
 
 app.mount("/static",StaticFiles(directory = "static"), name = "static")
 
-test_clients = {"someclient" : "https://example.com/callback"}
 
 app.include_router(auth_flow.router)
 app.include_router(user_related.router)

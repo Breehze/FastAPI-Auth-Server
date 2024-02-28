@@ -28,6 +28,16 @@ Install dependencies
 pip install -r requirements.txt
 ```
 
+Create .env and fill out this stuff
+
+```
+DOMAIN="http://127.0.0.1:8000"
+MONGO_CON_STR="yourmongoconstring"
+SMTP_SERV="your smtp server"
+SMTP_LOGIN="randomlogin"
+SMTP_PW="randompw"
+```
+
 Run tests
 ```
 pytest
