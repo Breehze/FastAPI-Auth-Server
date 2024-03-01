@@ -22,7 +22,7 @@ class KeyManager:
                 f.write(private_key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.PKCS8,encryption_algorithm=serialization.NoEncryption()))
             with open("public_key.pem", "wb") as f:
                 f.write(public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo))
-            self.pub_base64 = self.get_base64("private_key.pem")
+            self.pub_base64 = self.get_base64("public_key.pem")
             await asyncio.sleep(120)
     
     def get_base64(self,path):
@@ -33,7 +33,7 @@ class KeyManager:
         return data
 class JWTmanager:
     def jwt_get(self,issuer : str ,sub : any , aud : str ,payload_append : dict = None):
-        with open("private_key.pem", 'r') as key_file:
+        with open("private_key.pem", 'rb') as key_file:
             private_key = key_file.read()
         issued_time = time.time()
         payload = {"iss" : issuer,
@@ -66,12 +66,16 @@ class CodeManager:
         return True
     
     def validate_url(self,code : str,new_url : str):
-        if self.managee[code]["associated_url"] != new_url:
-            return False
-        return True
+        print(self.managee[code]["associated_url"])
+        print(new_url)
+        print(self.managee[code]["associated_url"].startswith(new_url))
+        if self.managee[code]["associated_url"].startswith(new_url):
+            return True
+        return False
     
     async def manage(self,expiration_time = 120):
         while True: 
+            print(self.managee)
             for token,metadata in copy.copy(self.managee).items():
                 if time.time() - metadata["issue_time"] >= expiration_time :
                     self.managee.pop(token)
