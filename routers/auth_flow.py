@@ -39,7 +39,7 @@ async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthG
     if auth_grant_body.client_id not in test_clients:
         raise HTTPException(status_code=400, detail= "Client does not exist")
     
-    print(test_clients[client_id])
+    print(test_clients[auth_grant_body.client_id])
     token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id])
     print(jwt_manager.jwt_decode(token,aud=test_clients[auth_grant_body.client_id]))
     code_manager.managee.pop(auth_grant_body.code)
