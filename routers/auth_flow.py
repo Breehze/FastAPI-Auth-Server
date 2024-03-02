@@ -1,3 +1,4 @@
+from json import load
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -7,17 +8,22 @@ from urllib.parse import urlencode
 from utils.endpoint_dependencies import get_db
 from fastapi.templating import Jinja2Templates
 from state_handler import code_manager
+from dotenv import load_dotenv
+from os import getenv
+
+
+load_dotenv()
 
 jwt_manager = JWTmanager()
 
 pw_manager = PasswordManager()
 
-TOKEN_ISSUER = "https://breehze-auth.com"
+TOKEN_ISSUER = getenv("DOMAIN")
 
 templates = Jinja2Templates(directory="templates")
 
-test_clients = {"someclient" : "https://example.com/callback",
-                "testclient" : "http://127.0.0.1:9000"}
+test_clients = {"someclient" : {"aud":"https://example.com/callback","secret": None},
+                "testclient" : {"aud":"http://127.0.0.1:9000","secret" : "somesecret"}}
 
 
 router = APIRouter()
@@ -38,10 +44,11 @@ async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthG
         raise HTTPException(status_code=400, detail= "Invalid redirect url")
     if auth_grant_body.client_id not in test_clients:
         raise HTTPException(status_code=400, detail= "Client does not exist")
-    
-    print(test_clients[auth_grant_body.client_id])
-    token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id])
-    print(jwt_manager.jwt_decode(token,aud=test_clients[auth_grant_body.client_id]))
+    if test_clients[auth_grant_body.client_id]['secret'] != auth_grant_body.client_secret:
+        raise HTTPException(status_code=400,detail="Invalid client secret")
+
+    token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id]["aud"])
+
     code_manager.managee.pop(auth_grant_body.code)
     
     return {"access_token" : token, "token_type" : "bearer"}
@@ -58,10 +65,11 @@ async def exchange_auth_code_form_body(grant_type : str = Form(), code : str = F
         raise HTTPException(status_code=400, detail= "Invalid redirect url")
     if auth_grant_body.client_id not in test_clients:
         raise HTTPException(status_code=400, detail= "Client does not exist")
+    if test_clients[auth_grant_body.client_id]['secret'] != client_secret:
+        raise HTTPException(status_code=400,detail="Invalid client secret")
     
-    print(test_clients[client_id])
-    token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id])
-    print(jwt_manager.jwt_decode(token,aud=test_clients[auth_grant_body.client_id]))
+    token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id]['aud'])
+
     code_manager.managee.pop(auth_grant_body.code)
     
     return {"access_token" : token, "token_type" : "bearer"}
@@ -74,9 +82,8 @@ async def login_user(form_data : OAuth2PasswordRequestForm = Depends(),response_
         raise HTTPException(status_code=401, detail= "Incorect password or username")
     if client_id not in test_clients or client_id is None:
         raise HTTPException(status_code=400, detail= "Client does not exist")
-    if not redirect_uri.startswith(test_clients[client_id]) or redirect_uri is None:
+    if not redirect_uri.startswith(test_clients[client_id]['aud']) or redirect_uri is None:
         raise HTTPException(status_code=400, detail= "Redirect URI not valid")
-
     authorization_code = code_manager.url_code()
 
     uri_tempered = f"{redirect_uri}?code={authorization_code}"
