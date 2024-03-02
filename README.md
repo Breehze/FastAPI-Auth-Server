@@ -49,7 +49,11 @@ Run uvicorn
 ```
 uvicorn main:app
 ```
-
+If you want to test it out in practice run:
+```
+python testclient.py
+```
+Then go to localhost:9000/docs
 ## Usage
 
 Here is a basic flow that client app should follow.
@@ -92,11 +96,10 @@ There are some other endpoints like Register or Login but those are pretty self 
 
 ## Future upgrades
 
-* Use actual DB
+* ~~Use actual DB~~
 * PKCE
 * Unique RSA keys for every client
 * Unique API_KEY for every resource server
 * More secure way to store keys
 * Dockerize
 * Production ready
-
