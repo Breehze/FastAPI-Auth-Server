@@ -7,7 +7,9 @@ from bson import ObjectId
 import motor.motor_asyncio
 from pymongo import ReturnDocument
 
-API_KEY = "test_key"
+load_dotenv()
+
+API_KEY =  getenv("API_KEY")
 
 load_dotenv()
 

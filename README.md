@@ -32,6 +32,7 @@ Create .env and fill out this stuff
 
 ```
 DOMAIN="http://127.0.0.1:8000"
+API_KEY ="test_key"
 MONGO_CON_STR="yourmongoconstring"
 SMTP_SERV="your smtp server"
 SMTP_LOGIN="randomlogin"
