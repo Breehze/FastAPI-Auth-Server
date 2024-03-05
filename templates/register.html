@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Page</title>
+</head>
+<body>
+    <h2>Register</h2>
+    <form id="registerForm">
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="user_mail" required><br>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="user_password" required><br>
+        <label for="confirmPassword">Confirm Password:</label><br>
+        <input type="password" id="confirmPassword" name="user_password_repeat" required><br><br>
+        <input type="submit" value="Register">
+    </form>
+
+    <script>
+        document.getElementById("registerForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const query = window.location.search
+            const jsonObject = {};
+            formData.forEach((value, key) => {
+                jsonObject[key] = value;
+            });
+            const jsonString = JSON.stringify(jsonObject);
+
+            fetch('/v0/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: jsonString
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                alert("Registration successful!");
+                window.location.href = "/v0/auth" + query
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Registration failed!");
+            });
+        });
+    </script>
+</body>
+</html>
+

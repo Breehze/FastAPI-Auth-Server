@@ -32,7 +32,8 @@ router = APIRouter()
 async def authentification_page(request : Request,response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None):
     q_str = urlencode(dict(request.query_params))
     login_p_endp = "/v0/login?"+q_str
-    return templates.TemplateResponse("login.html",{"request": request,"url" : login_p_endp})
+    register_url = "/v0/register?" + q_str
+    return templates.TemplateResponse("login.html",{"request": request,"url" : login_p_endp,"register_url" : register_url,"reset_url" :"/v0/reset_password" })
 
 @router.post("/v0/token")
 async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthGrantBody):

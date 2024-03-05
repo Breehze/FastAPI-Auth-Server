@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+</head>
+<body>
+    <h1>Password Reset</h1>
+    <p>Please enter your email address below to reset your password.</p>
+    <form id="resetForm">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <button type="button" onclick="resetPassword()">Reset Password</button>
+    </form>
+
+    <script>
+        function resetPassword() {
+            const email = document.getElementById("email").value;
+            const formData = { user_mail : email };
+
+            fetch('/v0/req_pw_reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (response.ok) { 
+                    console.log('Password reset request sent successfully.');
+                } else {
+                    console.error('Error sending password reset request.');
+                }
+            })
+            .catch(error => {
+                // Handle network errors
+                console.error('Network error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
+

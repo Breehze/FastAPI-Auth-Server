@@ -4,7 +4,7 @@ from utils.models import RegisterBody,ReqResetPasswordBody,ResetPasswordBody
 from utils.endpoint_dependencies import get_db
 from utils.cryptostuff import PasswordManager 
 from contextlib import asynccontextmanager
-from  fastapi.templating import Jinja2Templates 
+from  fastapi.templating import Jinja2Templates
 from pymongo.errors import DuplicateKeyError
 from utils.mailstuff import send_pw_reset
 from state_handler import pw_reset_manager
@@ -21,6 +21,14 @@ templates = Jinja2Templates(directory="templates")
 
 anti_spam = {}
 expiration_time = 3600  
+
+@router.get("/v0/register")
+async def register_page(request:Request):
+    return templates.TemplateResponse("register.html",{"request": request})
+
+@router.get("/v0/reset_password")
+async def password_reset_submit_mail(request:Request):
+    return templates.TemplateResponse("pw_reset_mail.html",{"request": request})
 
 @router.post("/v0/register")
 async def register_user(register : RegisterBody, db = Depends(get_db)): 
