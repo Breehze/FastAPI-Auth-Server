@@ -23,7 +23,7 @@ class KeyManager:
             with open("public_key.pem", "wb") as f:
                 f.write(public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo))
             self.pub_base64 = self.get_base64("public_key.pem")
-            await asyncio.sleep(120)
+            await asyncio.sleep(10000)
     
     def get_base64(self,path):
         with open(path,"rb") as rd:

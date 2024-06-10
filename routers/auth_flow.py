@@ -23,7 +23,7 @@ TOKEN_ISSUER = getenv("DOMAIN")
 templates = Jinja2Templates(directory="templates")
 
 test_clients = {"someclient" : {"aud":"https://example.com/callback","secret": None},
-                "testclient" : {"aud":"http://127.0.0.1:9000","secret" : "somesecret"}}
+                "testclient" : {"aud":"http://localhost:9000/login/callback","secret" : "somesecret"}}
 
 
 router = APIRouter()
@@ -37,7 +37,7 @@ async def authentification_page(request : Request,response_type : str = "code", 
 
 @router.post("/v0/token")
 async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthGrantBody):
-    if auth_grant_body.grant_type != "authorization_code":
+    if auth_grant_body.grant_type != "code" and auth_grant_body != "":
         raise HTTPException(status_code=400, detail= "Authorization flow not supported")
     if code_manager.validate_code(auth_grant_body.code) is False:
         raise HTTPException(status_code=400, detail= "Invalid or Expired token")
@@ -58,7 +58,8 @@ async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthG
 @router.post("/v0/token_form")
 async def exchange_auth_code_form_body(grant_type : str = Form(), code : str = Form(),redirect_uri : str = Form(),client_id : str = Form(), client_secret : str = Form(None)):
     auth_grant_body = AuthGrantBody(grant_type=grant_type,code=code,redirect_uri=redirect_uri,client_id=client_id,client_secret=client_secret)
-    if auth_grant_body.grant_type != "authorization_code":
+    print(auth_grant_body.grant_type == "authorization_code")
+    if auth_grant_body.grant_type != "authorization_code" and auth_grant_body.grant_type != "code":
         raise HTTPException(status_code=400, detail= "Authorization flow not supported")
     if code_manager.validate_code(auth_grant_body.code) is False:
         raise HTTPException(status_code=400, detail= "Invalid or Expired token")

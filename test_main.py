@@ -11,8 +11,13 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pymongo import MongoClient
 
+from dotenv import load_dotenv
+from os import getenv
+
+CON_STRING = getenv("MONGO_CON_STR")
+
 def override_get_db():
-    client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017") 
+    client = motor.motor_asyncio.AsyncIOMotorClient(CON_STRING) 
     db = client["AuthUsers"]
     collection = db['testUsers']
     try:
@@ -27,7 +32,7 @@ client = TestClient(app)
 
 @pytest.fixture(autouse = True)
 def setup_teardown():
-    client = MongoClient("mongodb://localhost:27017")
+    client = MongoClient(CON_STRING)
     db = client["AuthUsers"]
     collection = db['testUsers']
     code_manager.managee.clear()
