@@ -23,7 +23,7 @@ class KeyManager:
             with open("public_key.pem", "wb") as f:
                 f.write(public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo))
             self.pub_base64 = self.get_base64("public_key.pem")
-            await asyncio.sleep(10000)
+            await asyncio.sleep(345600)
     
     def get_base64(self,path):
         with open(path,"rb") as rd:
@@ -32,19 +32,45 @@ class KeyManager:
             data = '\n'.join([base64_enc[i:i+64] for i in range(0, len(base64_enc), 64)])
         return data
 class JWTmanager:
-    def jwt_get(self,issuer : str ,sub : any , aud : str ,payload_append : dict = None):
+    def jwt_get(self,issuer : str ,sub : str , aud : str ,payload_append : dict | None = None):
         with open("private_key.pem", 'rb') as key_file:
             private_key = key_file.read()
         issued_time = time.time()
         payload = {"iss" : issuer,
                    "sub" : sub,
                    "aud" : aud,
-                   "exp" : issued_time + 3600,
+                   "exp" : issued_time + 300,
                    "iat" : issued_time}
         if payload_append != None:
             payload.update(payload_append)
         print(payload["aud"])
         return jwt.encode(payload,private_key,algorithm = "RS256")
+    
+    def ref_get(self,issuer : str ,sub : str , aud : str ,payload_append : dict | None = None):
+        with open("private_key.pem", 'rb') as key_file:
+            private_key = key_file.read()
+        issued_time = time.time()
+        payload = {"iss" : issuer,
+                   "sub" : sub,
+                   "aud" : aud,
+                   "exp" : issued_time + 259200,
+                   "jti" : str(uuid.uuid4),
+                   "iat" : issued_time}
+        if payload_append != None:
+            payload.update(payload_append)
+        return jwt.encode(payload,private_key,algorithm = "RS256")
+    
+    def validate_ref_tokens(self,ref_token,aud = None): 
+        try:
+            token_decode = self.jwt_decode(ref_token,aud) 
+        except:
+            return False
+        #add jti validity cond here 
+        if time.time() > token_decode["exp"]:   
+            return False
+        
+        return True
+    
     def jwt_decode(self,token,aud = None):
         with open("public_key.pem", 'r') as key_file:
             public_key = key_file.read()

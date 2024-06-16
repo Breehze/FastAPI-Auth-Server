@@ -13,14 +13,14 @@ import base64
 
 app = FastAPI()
 
-oauth_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl= "http://127.0.0.1:8000/v0/auth?client_id=testclient&redirect_uri=http://127.0.0.1:9000/redeem" , tokenUrl="http://127.0.0.1:8000/v0/token_form")
+oauth_scheme = OAuth2AuthorizationCodeBearer(authorizationUrl= "http://127.0.0.1:8000/v0/auth" , tokenUrl="http://127.0.0.1:8000/v0/token_form", refreshUrl="http://127.0.0.1:8000/v0/refresh")
 
 giv_key_pls = requests.get("http://127.0.0.1:8000/v0/client_pub_key",headers={"x-api-key":"test_key"})
 pub_key = base64.b64decode(giv_key_pls.json())
 
 
-async def get_user(token : Annotated[str, Depends(oauth_scheme)]):
-    subbie = jwt.decode(token,pub_key,algorithms=["RS256"],audience="http://127.0.0.1:9000")['sub']
+async def get_user(token = Depends(oauth_scheme)):
+    subbie = jwt.decode(token,pub_key,algorithms=["RS256"],audience="http://127.0.0.1:9000/docs/oauth2-redirect")['sub']
     return subbie
 
 

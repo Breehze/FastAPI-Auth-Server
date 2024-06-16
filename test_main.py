@@ -70,7 +70,6 @@ def test_register_registered_user():
     response = client.post('/v0/register',json=req_body)
     assert response.status_code == 409
 
-def test_login_sucssesful_login():
     req_body = {
         "username" : "something@something.com",
         "password" : "hello"
@@ -126,6 +125,7 @@ def test_token_valid_token():
         "client_id" : "someclient"
     }
     response = client.post('/v0/token', json= req_body)
+    print(response.json())
     assert response.status_code == 200
     assert len(code_manager.managee) == 0
 

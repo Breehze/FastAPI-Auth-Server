@@ -3,7 +3,6 @@ from fastapi.security import APIKeyHeader
 from os import getenv
 from dotenv import load_dotenv
 
-from bson import ObjectId
 import motor.motor_asyncio
 from pymongo import ReturnDocument
 

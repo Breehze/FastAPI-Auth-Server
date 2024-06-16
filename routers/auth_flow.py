@@ -23,7 +23,7 @@ TOKEN_ISSUER = getenv("DOMAIN")
 templates = Jinja2Templates(directory="templates")
 
 test_clients = {"someclient" : {"aud":"https://example.com/callback","secret": None},
-                "testclient" : {"aud":"http://localhost:9000/login/callback","secret" : "somesecret"}}
+                "testclient" : {"aud":"http://127.0.0.1:9000/docs/oauth2-redirect","secret" : "somesecret"}}
 
 
 router = APIRouter()
@@ -37,7 +37,7 @@ async def authentification_page(request : Request,response_type : str = "code", 
 
 @router.post("/v0/token")
 async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthGrantBody):
-    if auth_grant_body.grant_type != "code" and auth_grant_body != "":
+    if auth_grant_body.grant_type != "code" and auth_grant_body.grant_type != "authorization_code" :
         raise HTTPException(status_code=400, detail= "Authorization flow not supported")
     if code_manager.validate_code(auth_grant_body.code) is False:
         raise HTTPException(status_code=400, detail= "Invalid or Expired token")
@@ -48,17 +48,18 @@ async def exchange_auth_code_JSON_body(request: Request, auth_grant_body : AuthG
     if test_clients[auth_grant_body.client_id]['secret'] != auth_grant_body.client_secret:
         raise HTTPException(status_code=400,detail="Invalid client secret")
 
-    token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id]["aud"])
-
+    token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id]["aud"]) 
+    
+    refresh = jwt_manager.ref_get(issuer=TOKEN_ISSUER,sub = code_manager.managee[auth_grant_body.code]['associated_user'],aud = test_clients[auth_grant_body.client_id]["aud"])
+    
     code_manager.managee.pop(auth_grant_body.code)
     
-    return {"access_token" : token, "token_type" : "bearer"}
+    return {"access_token" : token, "token_type" : "bearer", "refresh_token" : refresh}
 
 
 @router.post("/v0/token_form")
 async def exchange_auth_code_form_body(grant_type : str = Form(), code : str = Form(),redirect_uri : str = Form(),client_id : str = Form(), client_secret : str = Form(None)):
     auth_grant_body = AuthGrantBody(grant_type=grant_type,code=code,redirect_uri=redirect_uri,client_id=client_id,client_secret=client_secret)
-    print(auth_grant_body.grant_type == "authorization_code")
     if auth_grant_body.grant_type != "authorization_code" and auth_grant_body.grant_type != "code":
         raise HTTPException(status_code=400, detail= "Authorization flow not supported")
     if code_manager.validate_code(auth_grant_body.code) is False:
@@ -72,12 +73,29 @@ async def exchange_auth_code_form_body(grant_type : str = Form(), code : str = F
     
     token = jwt_manager.jwt_get(issuer= TOKEN_ISSUER ,sub= code_manager.managee[auth_grant_body.code]['associated_user']  , aud = test_clients[auth_grant_body.client_id]['aud'])
 
+    refresh = jwt_manager.ref_get(issuer=TOKEN_ISSUER,sub = code_manager.managee[auth_grant_body.code]['associated_user'],aud = test_clients[auth_grant_body.client_id]["aud"])
+
     code_manager.managee.pop(auth_grant_body.code)
     
-    return {"access_token" : token, "token_type" : "bearer"}
+    return {"access_token" : token, "token_type" : "bearer", "expires_in" : 300 , "refresh_token" : refresh}
+
+@router.post("/v0/refresh")
+async def refresh_token(grant_type : str = Form(),refresh_token : str = Form(), client_id : str = Form(), client_secret : str | None = Form(None)): 
+    aud = test_clients[client_id]['aud']
+    if not client_id or client_id not in test_clients:
+        raise HTTPException(status_code=400,detail="Non existent client")
+    if test_clients[client_id]["secret"] != client_secret: 
+        raise HTTPException(status_code=403)
+    if not refresh_token or not jwt_manager.validate_ref_tokens(refresh_token,aud): 
+        raise HTTPException(status_code=400,detail="Invalid refresh token")
+    
+    info= jwt_manager.jwt_decode(refresh_token,aud)
+    token = jwt_manager.jwt_get(TOKEN_ISSUER,info["sub"],aud)
+    refresh = jwt_manager.ref_get(TOKEN_ISSUER,info["sub"],aud)
+    return {"access_token" : token, "token_type" : "bearer","expires_in": 300, "refresh_token" : refresh}
 
 @router.post("/v0/login")
-async def login_user(form_data : OAuth2PasswordRequestForm = Depends(),response_type : str = "code", client_id : str = None, redirect_uri : str = None, state : str = None, db = Depends(get_db)):
+async def login_user(form_data : OAuth2PasswordRequestForm = Depends(),response_type : str = "code", client_id : str | None = None, redirect_uri : str | None = None, state : str | None = None, db = Depends(get_db)):
     user = await db.find_one({"_id": form_data.username })
     
     if not user or pw_manager.check_pw(form_data.password,user["password"]) != True:
