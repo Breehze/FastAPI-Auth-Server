@@ -19,9 +19,14 @@ Create virtual enviroment
 python -m venv '.'
 ```
 
-Activate virtual enviroment (Dunno how to do on Linux so here is Windows)
+Activate virtual enviroment 
 ```
+Windows
 Scripts\Activate.bat
+```
+```
+Linux
+source venv/bin/activate
 ```
 Install dependencies
 ```
